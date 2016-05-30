@@ -1,0 +1,36 @@
+<?xml version="1.0" ?>
+<FrameLayout android:id="@+id/content_frame"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#ffffff"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <GridView xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:id="@+id/GridLayout_Movie"
+        android:layout_width="fill_parent"
+        android:layout_height="411dp"
+        android:layout_margin="5dp"
+        android:columnWidth="100dp"
+        android:drawSelectorOnTop="true"
+        android:gravity="center"
+        android:numColumns="auto_fit"
+        android:stretchMode="columnWidth"
+        android:verticalSpacing="5dp"
+        android:focusable="true"
+        android:clickable="true"
+        tools:context=".GridActivity"
+        android:layout_gravity="center">
+
+    </GridView>
+
+    <EditText
+        android:id="@+id/searchText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:singleLine="true"
+        android:inputType="text"
+        android:imeOptions="actionDone"
+        android:hint="@string/gridView_editText"
+        android:layout_gravity="center_horizontal|top" />
+</FrameLayout>

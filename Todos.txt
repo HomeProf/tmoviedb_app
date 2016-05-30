@@ -1,0 +1,50 @@
+JSON-Requet:
+
+INFO_URL: http://api.themoviedb.org/3/search/movie?query=fight%20club&api_key=75be16b29b7ed69ddedf190a23857343
+
+- title
+- overview (synopsis)
+
+
+{
+   "page":1,
+   "results":[
+      {
+         "poster_path":"\/811DjJTon9gD6hZ8nCjSitaIXFQ.jpg",
+         "adult":false,
+         "overview":"A ticking-time-bomb insomniac and a slippery soap salesman channel primal male aggression into a shocking new form of therapy. Their concept catches on, with underground \"fight clubs\" forming in every town, until an eccentric gets in the way and ignites an out-of-control spiral toward oblivion.",
+         "release_date":"1999-10-14",
+         "genre_ids":[
+            18
+         ],
+         "id":550,
+         "original_title":"Fight Club",
+         "original_language":"en",
+         "title":"Fight Club",
+         "backdrop_path":"\/8uO0gUM8aNqYLs1OsTBQiXu0fEv.jpg",
+         "popularity":5.105299,
+         "vote_count":4811,
+         "video":false,
+         "vote_average":8.02
+      }
+   ],
+   "total_results":13,
+   "total_pages":1
+}
+
+IMAGE_URL: http://image.tmdb.org/t/p/w500/811DjJTon9gD6hZ8nCjSitaIXFQ.jpg
+
+Bitmap image = null;
+
+    @Override
+    protected Bitmap doInBackground(String... params) {
+        try {
+// param[0] would be replaced with your image path.
+            image = BitmapFactory.decodeStream((InputStream)new URL(params[0]).getContent());
+        } catch (MalformedURLException e) {
+            Log.e("MalformedURLException",e.toString());
+        } catch (IOException e) {
+            Log.e("IOException",e.toString());
+        }
+        return image;
+    }
