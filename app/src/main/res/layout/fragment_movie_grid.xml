@@ -20,17 +20,9 @@
         android:focusable="true"
         android:clickable="true"
         tools:context=".GridActivity"
-        android:layout_gravity="center">
+        android:layout_gravity="center"
+        android:overScrollMode="never">
 
     </GridView>
 
-    <EditText
-        android:id="@+id/searchText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:singleLine="true"
-        android:inputType="text"
-        android:imeOptions="actionDone"
-        android:hint="@string/gridView_editText"
-        android:layout_gravity="center_horizontal|top" />
 </FrameLayout>

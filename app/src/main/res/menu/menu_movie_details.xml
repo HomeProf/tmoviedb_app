@@ -2,9 +2,18 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="com.example.android.popularmusicapp.MovieDetails">
+
     <item
-        android:id="@+id/action_settings"
-        android:orderInCategory="100"
-        android:title="@string/action_settings"
-        app:showAsAction="never" />
+        android:id="@+id/action_booking_hotelDE"
+        android:icon="@drawable/icon_hotelde"
+        android:title="@string/action_booking"
+        app:showAsAction="always"/>
+
+    <item
+        android:id="@+id/action_booking_hrs"
+        android:icon="@drawable/icon_hrs"
+        android:title="@string/action_booking"
+        app:showAsAction="always"/>
+
+
 </menu>

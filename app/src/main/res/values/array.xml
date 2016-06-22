@@ -10,8 +10,8 @@
         <item>@string/pref_highest_rated</item>
     </string-array>
 
-    <string-array name="image_ids">
-        <item>@drawable/image_1</item>
-    </string-array>
+    <!--<string-array name="image_ids">-->
+
+    <!--</string-array>-->
 
 </resources>

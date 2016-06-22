@@ -50,11 +50,15 @@ public class SettingsActivity extends PreferenceActivity
             if (prefIndex >= 0) {
                 preference.setSummary(listPreference.getEntries()[prefIndex]);
             }
+
         } else {
             // For other preferences, set the summary to the value's simple string representation.
             preference.setSummary(stringValue);
         }
-        return true;
+
+       return true;
     }
+
+
 
 }

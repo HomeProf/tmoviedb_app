@@ -16,6 +16,9 @@ public class GridViewAdapter extends ArrayAdapter<ImageItem> {
     private int layoutResourceId;
     private ArrayList<ImageItem> data = new ArrayList<ImageItem>();
 
+//    private static final int VIEW_TYPE_COUNT = 1;
+//    private static final int VIEW_GRID_STANDARD = 0;
+
     public GridViewAdapter(Context context, int layoutResourceId, ArrayList<ImageItem> data) {
         super(context, layoutResourceId, data);
         this.layoutResourceId = layoutResourceId;
@@ -31,9 +34,7 @@ public class GridViewAdapter extends ArrayAdapter<ImageItem> {
         if (row == null) {
             LayoutInflater inflater = LayoutInflater.from(context);
             row = inflater.inflate(layoutResourceId, parent, false);
-            holder = new ViewHolder();
-            holder.imageTitle = (TextView) row.findViewById(R.id.text);
-            holder.image = (ImageView) row.findViewById(R.id.image);
+            holder = new ViewHolder(row);
             row.setTag(holder);
         } else {
             holder = (ViewHolder) row.getTag();
@@ -47,8 +48,44 @@ public class GridViewAdapter extends ArrayAdapter<ImageItem> {
     }
 
 
-    static class ViewHolder {
-        TextView imageTitle;
-        ImageView image;
+
+    @Override
+    public Context getContext() {
+        return context;
+    }
+
+    public void setContext(Context context) {
+        this.context = context;
+    }
+
+    public int getLayoutResourceId() {
+        return layoutResourceId;
+    }
+
+    public void setLayoutResourceId(int layoutResourceId) {
+        this.layoutResourceId = layoutResourceId;
+    }
+
+    public ArrayList<ImageItem> getData() {
+        return data;
+    }
+
+    public void setData(ArrayList<ImageItem> data) {
+        this.data = data;
+    }
+
+    public void addData(ArrayList<ImageItem> data) {
+        this.data.addAll(data);
+
+    }
+
+    public static class ViewHolder {
+        public final TextView imageTitle;
+        public final ImageView image;
+
+        public ViewHolder(View row) {
+            imageTitle = (TextView) row.findViewById(R.id.text);
+            image = (ImageView) row.findViewById(R.id.image);
+        }
     }
 }

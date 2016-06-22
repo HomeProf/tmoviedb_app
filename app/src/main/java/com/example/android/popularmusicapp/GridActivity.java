@@ -9,19 +9,20 @@ import android.view.MenuItem;
 
 public class GridActivity extends AppCompatActivity {
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
 
         getMenuInflater().inflate(R.menu.menu_main, menu);
+
         return true;
     }
 
@@ -36,6 +37,18 @@ public class GridActivity extends AppCompatActivity {
             return true;
         }
 
+        if (id == R.id.action_about) {
+            Intent intent = new Intent(getApplicationContext(), AboutActivity.class);
+            startActivity(intent);
+            return true;
+        }
+
+
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
     }
 }

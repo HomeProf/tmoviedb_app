@@ -1,34 +1,40 @@
 package com.example.android.popularmusicapp;
 
+import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.net.Uri;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.PowerManager;
+import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v7.widget.SearchView;
 import android.util.Log;
-import android.view.KeyEvent;
+import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
-import android.widget.EditText;
 import android.widget.GridView;
-import android.widget.TextView;
+import android.widget.Toast;
 
-import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -36,171 +42,352 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 
 /**
  * A placeholder fragment containing a simple view.
  */
-public class GridActivityFragment extends Fragment implements View.OnClickListener {
+public class GridActivityFragment extends Fragment {
+
 
     public GridActivityFragment() {
+
     }
 
-//    protected Context context = getActivity().getApplicationContext();
+    private static final String LOG_TAG = GridActivityFragment.class.getSimpleName();
+
+    private final Utility mUtility = new Utility();
 
     protected GridView gridView;
     protected GridViewAdapter gridAdapter;
     protected View rootView;
+    protected SearchView searchView = null;
 
-    final String  POSTER_PATH = "poster_path";
-    final String  TITLE = "original_title";
-    final String  LANG = "original_language";
-    final String  POPULARITY = "popularity";
-    final String  VOTE_COUNT = "vote_count";
-    final String  VOTE_AVE = "vote_average";
-    final String  RELEASE_DATE = "release_date";
-    final String  OVERVIEW = "overview";
+    public static String CUR_PREF_ORDER;
+    protected SharedPreferences sharedpreferences;
+
+    protected static String CUR_SORT_ORDER = null;
+
+    protected static String CUR_TITLE = null;
+    protected static String CUR_RELEASE_DATE = null;
+    protected static String CUR_POPULARITY = null;
+    protected static String CUR_VOTE_AVE = null;
+    protected static String CUR_SYNOPSIS = null;
+    protected static Bitmap CUR_IMAGE = null;
+
+    protected ProgressDialog mProgressDialog;
 
 
-    @Override
-    public void onClick(View v) {
-
-        if(v.getId()==R.id.searchText){
-            EditText editText = (EditText) v.findViewById(R.id.searchText);
-            editText.setText("");
-        }
+    public static String getCurPopularity() {
+        return CUR_POPULARITY;
     }
+
+    public static void setCurPopularity(String curPopularity) {
+        GridActivityFragment.CUR_POPULARITY = curPopularity;
+    }
+
+    public static String getCurVoteAve() {
+        return CUR_VOTE_AVE;
+    }
+
+    public static void setCurVoteAve(String curVoteAve) {
+        GridActivityFragment.CUR_VOTE_AVE = curVoteAve;
+    }
+
+    public static String getCurSynopsis() {
+        return CUR_SYNOPSIS;
+    }
+
+    public static void setCurSynopsis(String curSynopsis) {
+        GridActivityFragment.CUR_SYNOPSIS = curSynopsis;
+    }
+
+    public static String getCurTitle() {
+        return CUR_TITLE;
+    }
+
+    public static void setCurTitle(String curTitle) {
+        GridActivityFragment.CUR_TITLE = curTitle;
+    }
+
+    public static Bitmap getCurImage() {
+        return CUR_IMAGE;
+    }
+
+    public static void setCurImage(Bitmap curImage) {
+        GridActivityFragment.CUR_IMAGE = curImage;
+    }
+
+    public static String getCurReleaseDate() {
+        return CUR_RELEASE_DATE;
+    }
+
+    public static void setCurReleaseDate(String curReleaseDate) {
+        GridActivityFragment.CUR_RELEASE_DATE = curReleaseDate;
+    }
+
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
+        setRetainInstance(true);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        String tmp = sharedpreferences.getString(getString(R.string.pref_sort_order), getString(R.string.pref_most_popular));
+
+        if(searchView != null) {
+            if(!tmp.equals(CUR_PREF_ORDER)) {
+            String query = searchView.getQuery().toString();
+            if(query != "" || query != null) {
+
+                if (query != null && query != "") {
+                    processRequestWithDependencies(query);
+                } else {
+                    Log.d(LOG_TAG, "query String is null or empty.");
+                }
+            }
+            }
+        }
+    }
+
+    protected AsyncMetadata task;
+
+    private void processSearchText(String searchText) {
+
+        task = new AsyncMetadata();
+        task.execute(searchText);
+
+        mProgressDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialog) {
+                task.cancel(true);
+            }
+        });
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
+        sharedpreferences = PreferenceManager.getDefaultSharedPreferences(getActivity().getApplicationContext());
+
+
         rootView = inflater.inflate(R.layout.fragment_movie_grid, container, false);
 
-        EditText editText = (EditText) rootView.findViewById(R.id.searchText);
-
-        editText.setOnClickListener(this);
-
-        editText.setOnEditorActionListener(new EditText.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
-
-                    //start AsyncTask
-                    AsyncMetadata task = new AsyncMetadata();
-                    task.execute(v.getText().toString());
-
-                    InputMethodManager inputManager =
-                            (InputMethodManager) getActivity().getApplicationContext().
-                                    getSystemService(Context.INPUT_METHOD_SERVICE);
-                    if(getActivity().getCurrentFocus()!=null) {
-                        inputManager.hideSoftInputFromWindow(
-                                getActivity().getCurrentFocus().getWindowToken(),
-                                InputMethodManager.HIDE_NOT_ALWAYS);
-                    }
-
-                    return true;
-                }
-                return false;
-            }
-        });
-
-        editText.setOnFocusChangeListener(new View.OnFocusChangeListener()
-        {
-            @Override
-            public void onFocusChange(View v, boolean hasFocus)
-            {
-              TextView tv = (TextView) v;
-
-                if (hasFocus==true)
-                {
-                    if (tv.getText().toString().compareTo(getString(R.string.gridView_editText))==0)
-                    {
-                        tv.setText("");
-                    }
-                }
-            }
-        });
-
-
         gridView = (GridView) rootView.findViewById(R.id.GridLayout_Movie);
-
         gridView.setAdapter(gridAdapter);
 
         gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
+
                 ImageItem item = (ImageItem) parent.getItemAtPosition(position);
+
+                setCurTitle(item.getTitle());
+                setCurPopularity(item.getPopularity());
+                setCurSynopsis(item.getSynopsis());
+                setCurVoteAve(item.getVoteAve());
+                setCurImage(item.getImage());
+                setCurReleaseDate(item.getReleaseDate());
+
 
                 //Create intent
                 Intent detailsIntent = new Intent(getActivity().getApplicationContext(), MovieDetails.class);
-              /*  detailsIntent.putExtra("TITLE", TITLE);
-                detailsIntent.putExtra("POPULARITY", POPULARITY);
-                detailsIntent.putExtra("VOTE_AVE", VOTE_AVE);
-                detailsIntent.putExtra("IMAGE", item.getImage());*/
 
-                //Start details activity
                 startActivity(detailsIntent);
             }
         });
 
+        mProgressDialog = new ProgressDialog(getActivity());
+        mProgressDialog.setMessage(getString(R.string.on_progress_caption));
+        mProgressDialog.setIndeterminate(true);
+        mProgressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        mProgressDialog.setCancelable(true);
+
+        if(!isWiFiInternetAvailable()) {
+            getActivity().runOnUiThread(new Runnable() {
+                public void run() {
+
+                    Toast toast = Toast.makeText(getContext(), "WiFi is disabled!", Toast.LENGTH_SHORT);
+                    toast.setGravity(Gravity.TOP | Gravity.CENTER, 0, 100);
+                    toast.show();
+                }
+            });
+        }
+
         return rootView;
     }
 
+    private boolean isWiFiInternetAvailable() {
+        WifiManager wifiManager = (WifiManager) getActivity().getSystemService(getActivity().WIFI_SERVICE);
+        boolean wifiEnabled = wifiManager.isWifiEnabled();
 
-    private class AsyncMetadata extends AsyncTask<String, Void, List<Map<String,String>>> {
+        ConnectivityManager connectivityManager =
+                (ConnectivityManager) getActivity().getSystemService(getActivity().CONNECTIVITY_SERVICE);
+
+        if(wifiEnabled) {
+            NetworkInfo mobileInfo =
+                    connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+
+            if (mobileInfo.getState().equals(NetworkInfo.State.CONNECTED)) {
+                Log.d(LOG_TAG, "connection via WiFi internet available.");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isMobileInternetAvailable() {
+        ConnectivityManager connectivityManager =
+                (ConnectivityManager) getActivity().getSystemService(getActivity().CONNECTIVITY_SERVICE);
+
+        NetworkInfo mobileInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
+        boolean mobileConnected = mobileInfo.getState().equals(NetworkInfo.State.CONNECTED);
+        if(mobileConnected) {
+            Log.d(LOG_TAG, "connection via mobil internet available.");
+        }
+
+        return mobileConnected;
+    }
+
+    private void processRequestWithDependencies(String query) {
+        searchView.clearFocus();
+        CUR_PREF_ORDER = sharedpreferences.getString(getString(R.string.pref_sort_order), getString(R.string.pref_most_popular));
+
+        if(isWiFiInternetAvailable()) {
+            processSearchText(query);
+        }
+        else if(isMobileInternetAvailable()) {
+            processSearchText(query);
+        }
+        else {
+            getActivity().runOnUiThread(new Runnable() {
+                public void run() {
+
+                    Toast toast = Toast.makeText(getContext(), "No Internet Connection.", Toast.LENGTH_SHORT);
+                    toast.setGravity(Gravity.TOP | Gravity.CENTER, 0, 100);
+                    toast.show();
+                }
+            });
+        }
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+
+        MenuItem searchItem = menu.findItem(R.id.action_search);
+
+        if (searchItem != null) {
+            searchView = (SearchView) searchItem.getActionView();
+        }
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+
+            public boolean onQueryTextChange(String newText) {
+                // this is your adapter that will be filtered
+                return true;
+            }
+
+            public boolean onQueryTextSubmit(String query) {
+
+                if (query != null && query != "") {
+                    processRequestWithDependencies(query);
+                } else {
+                    Log.d(LOG_TAG, "query String is null or empty.");
+                }
+
+                return true;
+            }
+        });
+    }
+
+    protected PowerManager.WakeLock mWakeLock;
+
+
+    private class AsyncMetadata extends AsyncTask<String, Integer, List<Map<String, String>>> {
 
         private final String LOG_TAG = GridActivity.class.getSimpleName();
 
-        public List<Map<String,String>> resultList;
+        public List<Map<String, String>> resultList;
+
 
         @Override
-        protected void onPostExecute(List<Map<String,String>> list) {
-
-            resultList = list;
-
-            AsyncImage imageTask = new AsyncImage(){
-                @Override
-                protected void onPostExecute(GridViewAdapter adapter) {
-                    gridView.setAdapter(gridAdapter);
-                }
-            };
-
-            if(list!=null) {
-                imageTask.execute(list);
-            }
+        protected void onPreExecute() {
+            super.onPreExecute();
+            // take CPU lock to prevent CPU from going off if the user
+            // presses the power button during download
+            PowerManager pm = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
+            mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
+                    getClass().getName());
+            mWakeLock.acquire();
+            mProgressDialog.show();
         }
 
         @Override
-        protected List<Map<String,String>> doInBackground(String... params) {
+        protected void onProgressUpdate(Integer... progress) {
+            super.onProgressUpdate(progress);
+            // if we get here, length is known, now set indeterminate to false
+            mProgressDialog.setIndeterminate(false);
+            mProgressDialog.setMax(20);
+            mProgressDialog.setProgress(progress[0]);
+
+        }
+
+
+        @Override
+        protected void onPostExecute(List<Map<String, String>> list) {
+
+            if(list!=null && list.size()>0) {
+
+                final AsyncImage imageTask = new AsyncImage() {
+                    @Override
+                    protected void onPostExecute(ArrayList<ImageItem> imageItems) {
+                        if (imageItems.size() > 0) {
+
+                            gridAdapter = new GridViewAdapter(getActivity().getApplicationContext(), R.layout.grid_item_layout, imageItems);
+                            gridView.setAdapter(gridAdapter);
+
+//                            searchView.clearFocus();
+                        } else {
+                            gridAdapter = new GridViewAdapter(getActivity().getApplicationContext(), R.layout.grid_item_layout, new ArrayList());
+                            gridView.setAdapter(gridAdapter);
+//                            Toast.makeText(getActivity(), "No results found for that", Toast.LENGTH_SHORT).show();
+                        }
+
+                    }
+                };
+                imageTask.execute(list);
+            }
+            else {
+                mWakeLock.release();
+                mProgressDialog.dismiss();
+
+                    getActivity().runOnUiThread(new Runnable() {
+                        public void run() {
+
+                            Toast toast = Toast.makeText(getContext(), "No movies for that.", Toast.LENGTH_SHORT);
+                            toast.setGravity(Gravity.TOP|Gravity.CENTER, 0, 100);
+                            toast.show();
+                        }
+                    });
+                    Log.d(LOG_TAG, "No Movies for that.");
+
+            }
+
+        }
+
+        private String getResponseForUri(String uri) {
             HttpURLConnection urlConnection = null;
             BufferedReader reader = null;
 
-            String response = null;
-            List<Map<String,String>> jsonList = null; ;
-
             try {
-
-                Uri.Builder uriBuilder = new Uri.Builder();
-
-                uriBuilder.scheme("http")
-                        .authority(getString(R.string.base_url))
-                        .appendPath("3")
-                        .appendPath("search")
-                        .appendPath("movie")
-                        .appendQueryParameter("query", params[0])
-                        .appendQueryParameter("api_key", getString(R.string.api_key));
-
-
-                String uri = uriBuilder.build().toString();
-                Log.d("DEBUGINGATTENTION: ", uri);
                 URL url = new URL(uri);
 
                 urlConnection = (HttpURLConnection) url.openConnection();
@@ -226,17 +413,10 @@ public class GridActivityFragment extends Fragment implements View.OnClickListen
 
                     return null;
                 }
-                response = buffer.toString();
-
-                jsonList = formatJsonResponse(response);
-
+                return buffer.toString();
             } catch (IOException e) {
                 Log.e(LOG_TAG, "Error by IO ", e);
-
-                return null;
-            } catch (JSONException e) {
-                Log.e(LOG_TAG, "JSON Error", e);
-            } finally{
+            } finally {
                 if (urlConnection != null) {
                     urlConnection.disconnect();
                 }
@@ -247,145 +427,141 @@ public class GridActivityFragment extends Fragment implements View.OnClickListen
                         Log.e(LOG_TAG, "Error closing stream", e);
                     }
                 }
-                return jsonList;
             }
+            return "";
         }
 
-        private List<Map<String,String>> formatJsonResponse(String jsonStr)
-                throws JSONException {
+        @Override
+        protected List<Map<String, String>> doInBackground(String... params) {
 
-            List resultList = new ArrayList();
-            JSONObject o = new JSONObject(jsonStr);
-            final Integer TOTAL_PAGES = (o.getInt("total_pages"));
-            JSONArray arr = o.getJSONArray("results");
+            List<Map<String, String>> jsonList = new ArrayList<>();
 
-            if (arr.length()>0) {
-                for (int i = 0; i < arr.length(); i++) {
-                    Map<String, String> hashMap = new HashMap<>();
-                    JSONObject obj = arr.getJSONObject(i);
-                    hashMap.put(POSTER_PATH, obj.getString(POSTER_PATH));
-                    hashMap.put(TITLE, obj.getString(TITLE));
-                    hashMap.put(LANG, obj.getString(LANG));
-                    hashMap.put(POPULARITY, obj.getString(POPULARITY));
-                    hashMap.put(VOTE_COUNT, obj.getString(VOTE_COUNT));
-                    hashMap.put(VOTE_AVE, obj.getString(VOTE_AVE));
-                    hashMap.put(RELEASE_DATE, obj.getString(RELEASE_DATE));
-                    hashMap.put(OVERVIEW, obj.getString(OVERVIEW));
-                    resultList.add(hashMap);
-                }
-            }
-            else {
-                Log.d(LOG_TAG, "No movies.");
-                return Collections.EMPTY_LIST;
-            }
-            return resultList;
+            String inputParam = params[0];
 
-        }
-    }
-
-    private class AsyncImage extends AsyncTask<List<Map<String,String>>, Void, GridViewAdapter> {
-
-        private final String LOG_TAG = AsyncImage.class.getSimpleName();
-
-        public Bitmap loadBitmap(String posterPath)
-        {
-            Uri.Builder uriBuilder = new Uri.Builder();
-
-            uriBuilder.scheme("http")
-                    .authority("image.tmdb.org")
-                    .appendPath("t")
-                    .appendPath("p")
-                    .appendPath("w500")
-                    .appendPath(posterPath)
-                    .appendQueryParameter("api_key", getString(R.string.api_key));
-
-
-            String uri = uriBuilder.build().toString();
-
-            Bitmap bm = null;
-            InputStream is = null;
-            BufferedInputStream bis = null;
-            try
-            {
-                URLConnection conn = new URL(uri).openConnection();
-                conn.connect();
-                is = conn.getInputStream();
-                bis = new BufferedInputStream(is, 8192);
-                bm = BitmapFactory.decodeStream(bis);
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-            finally {
-                if (bis != null)
-                {
-                    try
-                    {
-                        bis.close();
-                    }
-                    catch (IOException e)
-                    {
-                        e.printStackTrace();
-                    }
-                }
-                if (is != null)
-                {
-                    try
-                    {
-                        is.close();
-                    }
-                    catch (IOException e)
-                    {
-                        e.printStackTrace();
-                    }
-                }
-            }
-            return bm;
-        }
-
-
-        private Bitmap createThumbnailFromByteArray(byte[] imageData, String fileName) {
             try {
 
-                final int THUMBNAIL_SIZE = 64;
+                if (inputParam.length() > 0) {
 
-                FileInputStream fis = new FileInputStream(fileName);
-                Bitmap imageBitmap = BitmapFactory.decodeStream(fis);
+                    String kw_uri = mUtility.getUriForKeywords(getActivity(), inputParam);
+                    String kw_response = getResponseForUri(kw_uri);
+                    String[] keywords = mUtility.getKeywordsFromJson(kw_response);
 
-                imageBitmap = Bitmap.createScaledBitmap(imageBitmap, THUMBNAIL_SIZE, THUMBNAIL_SIZE, false);
+                    if(keywords.length>0) {
+                        String uri = mUtility.getUriForParam(getActivity(), keywords);
+                        String response = getResponseForUri(uri);
 
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                imageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-//                imageData = baos.toByteArray();
-                return imageBitmap;
+                        Log.d("DEBUGINGATTENTION: ", uri);
 
-            } catch (Exception ex) {
-                Log.e(LOG_TAG, ex.toString());
+                        jsonList = mUtility.formatJsonResponse(response);
+                    }
+                    else {
+                       return null;
+                    }
+                }
+                return jsonList;
+            } catch (JSONException e) {
+                Log.e(LOG_TAG, "JSON Error", e);
             }
-            return null;
-        }
-
-        @Override
-        protected GridViewAdapter doInBackground(List<Map<String,String>>... params) {
-
-            ArrayList<ImageItem> bmps = new ArrayList<>();
-
-            for (int i=0; i<params[0].size(); i++) {
-                String posterPath = params[0].get(i).get(POSTER_PATH).toString().substring(1);
-                Bitmap bm = loadBitmap(posterPath);
-                bmps.add(new ImageItem(bm, params[0].get(i).get(TITLE)));
-            }
-            gridAdapter = new GridViewAdapter(getActivity().getApplicationContext(), R.layout.grid_item_layout, bmps);
-
-            return gridAdapter;
-        }
-
-        @Override
-        protected void onPostExecute(GridViewAdapter adapter) {
-            super.onPostExecute(adapter);
+            return jsonList;
         }
     }
+
+        private class AsyncImage extends AsyncTask<List<Map<String, String>>, Integer, ArrayList<ImageItem>> {
+
+            private final String LOG_TAG = AsyncImage.class.getSimpleName();
+
+            public Bitmap loadBitmap(String posterPath) {
+
+                String uri = mUtility.getUriStringForImages(getActivity(), posterPath);
+
+                Bitmap bm = null;
+                InputStream is = null;
+                BufferedInputStream bis = null;
+
+                try {
+                    URLConnection conn = new URL(uri).openConnection();
+                    conn.connect();
+                    is = conn.getInputStream();
+                    bis = new BufferedInputStream(is, 8192);
+                    bm = BitmapFactory.decodeStream(bis);
+
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    bm.compress(Bitmap.CompressFormat.JPEG, 20, out);
+                    Bitmap decoded = BitmapFactory.decodeStream(new ByteArrayInputStream(out.toByteArray()));
+                    bm = decoded;
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    if (bis != null) {
+                        try {
+                            bis.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    if (is != null) {
+                        try {
+                            is.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+                return bm;
+            }
+
+
+
+            @Override
+            protected ArrayList<ImageItem> doInBackground(List<Map<String, String>>... params) {
+
+
+                List<Map<String, String>> list = params[0];
+
+                try {
+
+                    return publishImageBulk(list);
+
+                } catch (Exception e) {
+                    Log.e(LOG_TAG, e.getMessage());
+                }
+                return null;
+            }
+
+            private ArrayList<ImageItem> publishImageBulk(List<Map<String, String>> helperList) {
+                ArrayList<ImageItem> bmps = new ArrayList<ImageItem>();
+
+                Bitmap bm = null;
+
+                for (int i = 0; i < helperList.size(); i++) {
+                    Map cur = helperList.get(i);
+                    String posterPath = cur.get(Constants.POSTER_PATH).toString().substring(1);
+                    if (posterPath != null) {
+                        bm = loadBitmap(posterPath);
+                    }
+                    if (bm == null) {
+                        bm = BitmapFactory.decodeResource(getResources(), R.drawable.not_available);
+                    }
+
+                    bmps.add(new ImageItem(bm, cur.get(Constants.OVERVIEW).toString(),
+                            cur.get(Constants.VOTE_AVE).toString(),
+                            cur.get(Constants.POPULARITY).toString(),
+                            cur.get(Constants.TITLE).toString(),
+                            cur.get(Constants.RELEASE_DATE).toString()));
+
+                }
+                mWakeLock.release();
+                mProgressDialog.dismiss();
+                return bmps;
+            }
+
+            @Override
+            protected void onProgressUpdate(Integer... values) {
+                task.onProgressUpdate(values);
+            }
+        }
+
 
     @Override
     public void onSaveInstanceState(Bundle savedInstanceState) {
