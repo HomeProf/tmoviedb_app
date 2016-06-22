@@ -18,7 +18,7 @@
 
     <string name="base_url">api.themoviedb.org</string>
     <!--    <string name="search_url_part">/3/search/movie</string>-->
-    <string name="api_key">75be16b29b7ed69ddedf190a23857343</string>
+    <string name="api_key">MY_API_KEY</string>
     <string name="title_activity_grid_view_adapter">GridViewAdapter</string>
 
     <!-- MovieDetails empty strings -->
@@ -40,12 +40,6 @@
     <string name="about_author">Benedikt Hofrichter</string>
 
 
-
-
-
-    <!--
-    INFO_URL: http://api.themoviedb.org/3/search/movie?query=fight%20club&api_key=75be16b29b7ed69ddedf190a23857343
--->
 
 
 </resources>
